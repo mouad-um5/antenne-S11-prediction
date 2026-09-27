@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { extractInputs, getAntennaCatalog, getModelInfo, predictPoint, predictSweep } from "./api/client";
+import { extractInputs, getExtractionModels, getAntennaCatalog, getModelInfo, predictPoint, predictSweep } from "./api/client";
 import NumberField from "./components/NumberField";
 import ParagraphInput from "./components/ParagraphInput";
 import S11Chart from "./components/S11Chart";
@@ -74,6 +74,9 @@ export default function App() {
   const [values, setValues] = useState(INITIAL_VALUES);
   const [inputMode, setInputMode] = useState("form");
   const [paragraph, setParagraph] = useState("");
+  const [extractionModels, setExtractionModels] = useState([]);
+  const [selectedExtractionModel, setSelectedExtractionModel] = useState("");
+  const [extractionModelsError, setExtractionModelsError] = useState("");
   const [extraction, setExtraction] = useState(null);
   const [selection, setSelection] = useState({ familyId: "", antenna: "" });
   const [activeStep, setActiveStep] = useState(1);
@@ -92,6 +95,19 @@ export default function App() {
       })
       .catch((requestError) => setError(requestError.message));
   }, []);
+
+  useEffect(() => {
+    getExtractionModels()
+      .then((catalog) => {
+        setExtractionModels(catalog.models);
+        setSelectedExtractionModel(catalog.default_model);
+      })
+      .catch((requestError) => setExtractionModelsError(requestError.message));
+  }, []);
+
+  const extractionModelLabel = extractionModels.find(
+    (model) => model.id === extraction?.model,
+  )?.label || extraction?.model || "le modèle choisi";
 
   const antennaFamilies = antennaCatalog?.families || [];
   const selectedFamily = antennaFamilies.find(
@@ -152,7 +168,7 @@ export default function App() {
     setError("");
     setLoading("extract");
     try {
-      const result = await extractInputs(paragraph.trim());
+      const result = await extractInputs(paragraph.trim(), selectedExtractionModel);
       const fields = result.fields;
       setValues(Object.fromEntries(
         Object.keys(INITIAL_VALUES).map((name) => [
@@ -310,6 +326,10 @@ export default function App() {
         {inputMode === "paragraph" ? (
           <ParagraphInput
             paragraph={paragraph}
+            models={extractionModels}
+            selectedModel={selectedExtractionModel}
+            onModelChange={(model) => { setSelectedExtractionModel(model); setError(""); }}
+            modelsError={extractionModelsError}
             onChange={(text) => { setParagraph(text); setError(""); }}
             onSubmit={handleExtraction}
             loading={loading === "extract"}
@@ -318,7 +338,7 @@ export default function App() {
         ) : <>
         {extraction && (
           <div className="extraction-review" role="status">
-            <Notice kind="info" title="Paramètres extraits — vérifiez les valeurs">
+            <Notice kind="info" title={`Paramètres extraits avec ${extractionModelLabel} — vérifiez les valeurs`}>
               {missingExtractedFields.length
                 ? `À compléter dans les étapes Antenne, Paramètres ou Courbe S11 : ${missingExtractedFields.map((name) => FIELD_LABELS[name]).join(", ")}.`
                 : "Tous les champs sont renseignés. Vous pouvez les corriger avant de lancer les calculs."}
@@ -326,6 +346,9 @@ export default function App() {
             {extraction.warnings.length > 0 && (
               <Notice kind="warning" title="Points à vérifier">{extraction.warnings.join(" ")}</Notice>
             )}
+            <button className="ghost-button extraction-retry" type="button" disabled={Boolean(loading)} onClick={() => changeInputMode("paragraph")}>
+              Retester le paragraphe avec un autre modèle
+            </button>
           </div>
         )}
         {activeStep === 1 && (

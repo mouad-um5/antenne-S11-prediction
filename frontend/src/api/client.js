@@ -66,9 +66,13 @@ export function predictSweep(payload) {
   });
 }
 
-export function extractInputs(paragraph) {
+export function getExtractionModels() {
+  return request("/api/extraction-models");
+}
+
+export function extractInputs(paragraph, model) {
   return request("/api/extract-inputs", {
     method: "POST",
-    body: JSON.stringify({ paragraph }),
+    body: JSON.stringify({ paragraph, model }),
   }, 60000);
 }

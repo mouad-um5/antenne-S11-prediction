@@ -1,12 +1,34 @@
-export default function ParagraphInput({ paragraph, onChange, onSubmit, loading, error }) {
+export default function ParagraphInput({
+  paragraph, onChange, onSubmit, loading, error,
+  models, selectedModel, onModelChange, modelsError,
+}) {
+  const selected = models.find((model) => model.id === selectedModel);
   return (
     <form className="panel workflow-panel" onSubmit={onSubmit} aria-busy={loading}>
       <div className="panel__heading">
         <div>
           <h2>Décrivez votre antenne</h2>
-          <p>Gemini extrait les paramètres. Vous pourrez les vérifier et les compléter avant la prédiction.</p>
+          <p>Le modèle choisi extrait les paramètres. Vous pourrez les vérifier et les compléter avant la prédiction.</p>
         </div>
       </div>
+      <label className="field extraction-model-field" htmlFor="extraction-model">
+        <span className="field__label">Modèle pour extraire les paramètres</span>
+        <select
+          id="extraction-model"
+          value={selectedModel}
+          onChange={(event) => onModelChange(event.target.value)}
+          disabled={loading || models.length === 0}
+          required
+          aria-describedby="extraction-model-help"
+        >
+          {models.length === 0 && <option value="">{modelsError ? "Modèles indisponibles" : "Chargement des modèles…"}</option>}
+          {models.map((model) => <option key={model.id} value={model.id}>{model.label}</option>)}
+        </select>
+        <span className="field__hint" id="extraction-model-help">
+          {selected?.description} {selected?.quota_note || ("Offre gratuite soumise aux quotas de votre compte " + (selected?.provider_label || "fournisseur") + ".")}
+        </span>
+      </label>
+      {modelsError && <div className="error" role="alert">{modelsError} Rechargez la page pour réessayer.</div>}
       <label className="field" htmlFor="antenna-paragraph">
         <span className="field__label">Votre paragraphe</span>
         <textarea
@@ -25,10 +47,10 @@ export default function ParagraphInput({ paragraph, onChange, onSubmit, loading,
           Précisez la famille, la variante et les unités de fréquence. {paragraph.length}/6000 caractères.
         </span>
       </label>
-      <p className="paragraph-disclosure">En cliquant sur « Extraire les paramètres », ce texte sera envoyé à Google Gemini.</p>
+      <p className="paragraph-disclosure">En cliquant sur « Extraire les paramètres », ce texte sera envoyé à {selected?.provider_label || "votre fournisseur sélectionné"}.</p>
       {error && <div className="error" role="alert">{error}</div>}
-      <button className="primary-button" type="submit" disabled={loading || paragraph.trim().length < 10}>
-        {loading ? "Extraction en cours…" : "Extraire les paramètres"}
+      <button className="primary-button" type="submit" disabled={loading || !selected || paragraph.trim().length < 10}>
+        {loading ? `Extraction avec ${selected?.label || "le modèle choisi"}…` : "Extraire les paramètres"}
       </button>
     </form>
   );

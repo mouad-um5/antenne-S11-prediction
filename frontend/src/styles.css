@@ -103,3 +103,7 @@ footer { display: flex; justify-content: space-between; gap: 24px; padding: 30px
 .paragraph-disclosure { color: var(--muted); font-size: .78rem; line-height: 1.6; }
 .extraction-review { width: min(860px, 100%); margin: 0 auto 24px; }
 .extraction-review .info { margin-top: 0; }
+
+.extraction-model-field { margin-bottom: 24px; }
+.extraction-model-field .field__hint { line-height: 1.6; }
+.extraction-retry { margin-top: 16px; }
