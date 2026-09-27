@@ -18,6 +18,8 @@ FAMILIES = [{
 
 @pytest.fixture
 def client(monkeypatch):
+    for key_env in extraction.GEMINI_API_KEY_ENV.values():
+        monkeypatch.delenv(key_env, raising=False)
     monkeypatch.setenv("GEMINI_API_KEY", "test-secret-key")
     monkeypatch.setenv("GEMINI_MODEL", "gemini-3.6-flash")
     monkeypatch.setattr(extraction, "get_antenna_catalog", lambda: {"families": FAMILIES})
@@ -342,3 +344,81 @@ def test_groq_can_be_default_model(client, monkeypatch):
     response = client.post("/api/extract-inputs", json={"paragraph": "Fréquence de 2,4 GHz."})
     assert response.status_code == 200
     assert response.json()["model"] == "openai/gpt-oss-20b"
+
+
+GEMINI_KEY_CASES = [
+    ("gemini-3.6-flash", "GEMINI_3_6_FLASH_API_KEY"),
+    ("gemini-3.8-flash", "GEMINI_3_8_FLASH_API_KEY"),
+    ("gemini-3.5-flash-lite", "GEMINI_3_5_FLASH_LITE_API_KEY"),
+]
+
+
+@pytest.mark.parametrize("model,key_env", GEMINI_KEY_CASES)
+@pytest.mark.parametrize("common_key", ["test-common-key", ""])
+def test_dedicated_key_follows_selected_model(client, monkeypatch, caplog, model, key_env, common_key):
+    monkeypatch.setenv("GEMINI_API_KEY", common_key)
+    for _, env_name in GEMINI_KEY_CASES:
+        monkeypatch.setenv(env_name, f"  secret-{env_name}  ")
+    transport = gemini_reply(monkeypatch, {"gap": 39.47})
+    response = client.post("/api/extract-inputs", json={
+        "paragraph": "Mon antenne a un gap de 39,47.", "model": model,
+    })
+    assert response.status_code == 200
+    request = transport.call_args.args[0]
+    assert request.full_url.endswith(f"/{model}:generateContent")
+    assert request.get_header("X-goog-api-key") == f"secret-{key_env}"
+    assert transport.call_count == 1
+    catalog = client.get("/api/extraction-models")
+    for _, env_name in GEMINI_KEY_CASES:
+        secret = f"secret-{env_name}"
+        assert secret not in response.text + catalog.text + caplog.text
+
+
+@pytest.mark.parametrize("model,key_env", GEMINI_KEY_CASES)
+@pytest.mark.parametrize("dedicated_key", [None, "", "   "])
+def test_common_key_remains_optional_fallback(client, monkeypatch, model, key_env, dedicated_key):
+    if dedicated_key is not None:
+        monkeypatch.setenv(key_env, dedicated_key)
+    transport = gemini_reply(monkeypatch, {})
+    response = client.post("/api/extract-inputs", json={
+        "paragraph": "Description de mon antenne.", "model": model,
+    })
+    assert response.status_code == 200
+    assert transport.call_args.args[0].get_header("X-goog-api-key") == "test-secret-key"
+
+
+@pytest.mark.parametrize("model,key_env", GEMINI_KEY_CASES)
+def test_missing_model_key_never_uses_another_models_key(client, monkeypatch, model, key_env):
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    for _, env_name in GEMINI_KEY_CASES:
+        monkeypatch.setenv(env_name, "   " if env_name == key_env else "another-model-secret")
+    transport = gemini_reply(monkeypatch, {})
+    response = client.post("/api/extract-inputs", json={
+        "paragraph": "Description de mon antenne.", "model": model,
+    })
+    assert response.status_code == 503
+    assert key_env in response.json()["detail"]
+    assert "another-model-secret" not in response.text
+    transport.assert_not_called()
+
+
+def test_default_model_uses_its_dedicated_key(client, monkeypatch):
+    monkeypatch.setenv("GEMINI_MODEL", "gemini-3.8-flash")
+    monkeypatch.setenv("GEMINI_3_8_FLASH_API_KEY", "default-model-secret")
+    transport = gemini_reply(monkeypatch, {})
+    response = client.post("/api/extract-inputs", json={"paragraph": "Description de mon antenne."})
+    assert response.status_code == 200
+    assert transport.call_args.args[0].get_header("X-goog-api-key") == "default-model-secret"
+
+
+def test_rejected_dedicated_key_does_not_retry_common_key(client, monkeypatch, caplog):
+    monkeypatch.setenv("GEMINI_3_6_FLASH_API_KEY", "dedicated-secret")
+    transport = MagicMock(side_effect=HTTPError(
+        "https://example.invalid", 403, "dedicated-secret", {}, None,
+    ))
+    monkeypatch.setattr(extraction, "urlopen", transport)
+    response = client.post("/api/extract-inputs", json={"paragraph": "Description de mon antenne."})
+    assert response.status_code == 503
+    assert transport.call_count == 1
+    assert transport.call_args.args[0].get_header("X-goog-api-key") == "dedicated-secret"
+    assert "dedicated-secret" not in response.text + caplog.text

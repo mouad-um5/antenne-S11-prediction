@@ -28,6 +28,11 @@ EXTRACTION_MODELS = (
 )
 MODEL_IDS = frozenset(model["id"] for model in EXTRACTION_MODELS)
 MODEL_PROVIDERS = {model["id"]: model["provider"] for model in EXTRACTION_MODELS}
+GEMINI_API_KEY_ENV = {
+    "gemini-3.6-flash": "GEMINI_3_6_FLASH_API_KEY",
+    "gemini-3.8-flash": "GEMINI_3_8_FLASH_API_KEY",
+    "gemini-3.5-flash-lite": "GEMINI_3_5_FLASH_LITE_API_KEY",
+}
 DEFAULT_MODEL = "gemini-3.6-flash"
 
 
@@ -120,12 +125,18 @@ def extraction_schema() -> dict:
 
 
 def call_gemini(paragraph: str, families: list[dict], model: str | None = None) -> dict:
-    key = os.getenv("GEMINI_API_KEY", "").strip()
-    if not key:
-        raise HTTPException(503, "La saisie par paragraphe nécessite une clé GEMINI_API_KEY côté serveur.")
     model = resolve_model(model)
     if MODEL_PROVIDERS[model] != "gemini":
         raise HTTPException(422, "Ce modèle ne peut pas être envoyé à Gemini.")
+    key_env = GEMINI_API_KEY_ENV[model]
+    key = os.getenv(key_env, "").strip() or os.getenv("GEMINI_API_KEY", "").strip()
+    if not key:
+        raise HTTPException(
+            503,
+            f"Le modèle {model} nécessite une clé {key_env} "
+            "(ou GEMINI_API_KEY comme clé commune) côté serveur. "
+            "Renseignez-la puis redémarrez le serveur.",
+        )
 
     instructions = extraction_instructions(families)
     schema = extraction_schema()

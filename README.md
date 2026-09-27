@@ -100,8 +100,20 @@ Un sélecteur propose quatre modèles :
 - **Gemini 3.5 Flash-Lite** (`gemini-3.5-flash-lite`), une version légère ;
 - **Groq · GPT-OSS 20B** (`openai/gpt-oss-20b`), avec sortie JSON structurée.
 
-Les trois modèles Gemini utilisent `GEMINI_API_KEY`. Groq utilise une clé séparée,
-`GROQ_API_KEY`, et son endpoint officiel ; aucune clé Gemini n'est envoyée à Groq.
+Chaque modèle Gemini peut utiliser sa propre clé côté serveur :
+
+| Modèle | Variable dans `backend/.env` |
+| --- | --- |
+| Gemini 3.6 Flash | `GEMINI_3_6_FLASH_API_KEY` |
+| Gemini 3.8 Flash | `GEMINI_3_8_FLASH_API_KEY` |
+| Gemini 3.5 Flash-Lite | `GEMINI_3_5_FLASH_LITE_API_KEY` |
+
+La clé dédiée au modèle sélectionné est prioritaire. Si elle est vide ou absente,
+`GEMINI_API_KEY` reste une clé commune facultative pour conserver la configuration
+existante. Laisser cette clé commune vide pour exiger une clé dédiée à chaque modèle.
+Une erreur du fournisseur ne déclenche aucun nouvel essai avec une autre clé.
+Groq utilise une clé séparée, `GROQ_API_KEY`, et son endpoint officiel ;
+aucune clé Gemini n'est envoyée à Groq.
 
 Les fournisseurs proposent des offres gratuites, sous réserve des quotas, du plan
 activé et des accès du compte. Vérifier le plan et les limites dans leur console. `GEMINI_MODEL` (nom historique) définit le choix initial
@@ -111,11 +123,15 @@ Le bouton **Retester le paragraphe avec un autre modèle** conserve le texte pou
 un nouvel essai. Les valeurs du nouvel essai remplacent le préremplissage précédent ;
 aucun basculement automatique vers un autre modèle n'est effectué.
 
-1. Créer une clé dans [Google AI Studio](https://aistudio.google.com/apikey).
-2. Choisir un projet bénéficiant de l'offre gratuite. La gratuité et les quotas
-   dépendent du projet Google ; l'application ne contrôle pas sa facturation.
-3. Dans le dossier backend, copier `.env.example` vers `.env` et renseigner
-   `GEMINI_API_KEY`. Le modèle par défaut est `gemini-3.6-flash`.
+1. Créer trois clés dans [Google AI Studio](https://aistudio.google.com/apikey),
+   avec un nom permettant de retrouver le modèle associé.
+2. Vérifier le plan du projet Google choisi. Une clé est rattachée à un projet ;
+   l'association à un modèle est faite par cette application. Les
+   [limites Gemini](https://ai.google.dev/gemini-api/docs/rate-limits) s'appliquent
+   par projet, pas par clé : trois clés du même projet ne multiplient pas les quotas.
+3. Dans le dossier backend, copier `.env.example` vers `.env` s'il n'existe pas
+   encore, puis renseigner les trois variables dédiées du tableau.
+   Le modèle par défaut est `gemini-3.6-flash`.
 4. Démarrer avec `uvicorn app.main:app --reload --port 8001`. Le backend charge
    automatiquement son fichier `.env`, sans remplacer les variables déjà définies
    dans le processus. Redémarrer le serveur après toute modification de `.env`.
