@@ -22,7 +22,7 @@ identifiée, la production bloque les prédictions par défaut.
 ## Fonctionnalités
 
 - catalogue dynamique de 16 familles et 39 variantes lu depuis BOT.xlsx ;
-- choix entre formulaire et paragraphe avec extraction Gemini, Groq, Cloudflare ou Mistral et relecture ;
+- choix entre formulaire et paragraphe avec extraction Gemini ou Groq et relecture ;
 - sélection obligatoire de l'antenne ;
 - prédiction S11 ponctuelle ;
 - sweep fréquentiel vectorisé ;
@@ -86,7 +86,7 @@ npm run dev
 
 Frontend : http://localhost:5173
 
-## Saisie par paragraphe avec Gemini, Groq, Cloudflare ou Mistral
+## Saisie par paragraphe avec Gemini ou Groq
 
 Le bouton **Décrire avec un paragraphe** envoie le texte au fournisseur sélectionné côté serveur,
 puis préremplit les champs pour relecture. Les valeurs absentes ou invalides restent
@@ -94,20 +94,18 @@ vides, y compris les réglages du balayage. L'utilisateur complète les champs e
 déclenche lui-même la prédiction S11. Le modèle choisi extrait les paramètres ; XGBoost
 continue à effectuer les prédictions.
 
-Un sélecteur propose six modèles :
+Un sélecteur propose quatre modèles :
 - **Gemini 3.6 Flash** (`gemini-3.6-flash`), le modèle initial ;
 - **Gemini 3.8 Flash** (`gemini-3.8-flash`), une version récente ;
 - **Gemini 3.5 Flash-Lite** (`gemini-3.5-flash-lite`), une version légère ;
-- **Groq · GPT-OSS 20B** (`openai/gpt-oss-20b`), avec sortie JSON structurée ;
-- **Cloudflare · Llama 3.1 8B Fast** (`@cf/meta/llama-3.1-8b-instruct-fast`) ;
-- **Mistral · Mistral Small** (`mistral-small-latest`), avec sortie JSON structurée.
+- **Groq · GPT-OSS 20B** (`openai/gpt-oss-20b`), avec sortie JSON structurée.
 
 Les trois modèles Gemini utilisent `GEMINI_API_KEY`. Groq utilise une clé séparée,
 `GROQ_API_KEY`, et son endpoint officiel ; aucune clé Gemini n'est envoyée à Groq.
 
 Les fournisseurs proposent des offres gratuites, sous réserve des quotas, du plan
 activé et des accès du compte. Vérifier le plan et les limites dans leur console. `GEMINI_MODEL` (nom historique) définit le choix initial
-et doit être l'un de ces six identifiants. Le choix de l'utilisateur s'applique à chaque extraction.
+et doit être l'un de ces quatre identifiants. Le choix de l'utilisateur s'applique à chaque extraction.
 L'API refuse tout autre identifiant et renvoie le modèle effectivement utilisé.
 Le bouton **Retester le paragraphe avec un autre modèle** conserve le texte pour
 un nouvel essai. Les valeurs du nouvel essai remplacent le préremplissage précédent ;
@@ -133,46 +131,6 @@ affiche un message de configuration ; Gemini reste utilisable avec sa propre cl�
 Les [quotas gratuits Groq](https://console.groq.com/docs/rate-limits) et les
 [sorties structurées](https://console.groq.com/docs/structured-outputs) sont
 documentés par le fournisseur. L'application n'active aucun abonnement payant.
-
-Pour activer Cloudflare :
-1. Dans [Cloudflare Workers AI](https://developers.cloudflare.com/workers-ai/get-started/rest-api/),
-   récupérer l'Account ID et créer un jeton API autorisé à utiliser Workers AI sur ce compte.
-2. Ajouter dans `backend/.env` :
-   `CLOUDFLARE_ACCOUNT_ID=votre_identifiant_de_compte` et
-   `CLOUDFLARE_API_TOKEN=votre_jeton` (deux lignes séparées).
-3. Redémarrer le backend puis sélectionner **Cloudflare · Llama 3.1 8B Fast**.
-
-L'Account ID est un identifiant hexadécimal de 32 caractères, pas un Zone ID.
-Le backend appelle l'API REST Workers AI directement. Ce modèle Fast reçoit
-une consigne JSON et le schéma dans le prompt ; la réponse est validée côté serveur.
-La sortie JSON n'est pas garantie par le modèle : une réponse invalide produit
-une erreur et ne préremplit pas le formulaire.
-Les [quotas Workers AI](https://developers.cloudflare.com/workers-ai/platform/pricing/)
-sont comptés en neurones, pas en nombre fixe de tokens.
-
-Pour activer Mistral :
-1. Créer une clé dans [Mistral Studio](https://console.mistral.ai/) avec l'offre gratuite
-   activée et vérifier les [limites du compte](https://docs.mistral.ai/admin/billing-usage/usage-limits).
-2. Ajouter `MISTRAL_API_KEY=votre_cle` dans `backend/.env`.
-3. Redémarrer le backend puis sélectionner **Mistral · Mistral Small**.
-
-Mistral utilise `https://api.mistral.ai/v1/chat/completions` et une sortie JSON
-contrainte par schéma. L'alias `mistral-small-latest` suit les mises à jour du fournisseur.
-Les identifiants Cloudflare et Mistral restent côté serveur et ne sont envoyés
-qu'au fournisseur sélectionné. Aucune clé d'un autre fournisseur n'est nécessaire.
-Un compte payant peut être facturé selon son plan ; l'application ne gère pas la facturation.
-
-En cas d'erreur :
-- **Cloudflare, authentification HTTP 401** (renvoyée par l'application en 503) :
-  depuis Workers AI > Use REST API, créer un jeton Workers AI et copier l'Account ID
-  du même compte. Un jeton personnalisé doit avoir les permissions Workers AI Read
-  et Edit. Corriger `backend/.env` puis redémarrer le serveur.
-- **Mistral, HTTP 429** : vérifier les limites de requêtes/tokens et l'utilisation
-  du compte dans Mistral Studio. Respecter le délai affiché s'il est fourni ;
-  sinon, aucun délai de reprise précis ne peut être déduit de cette réponse.
-  L'application ne réessaie pas automatiquement.
-- Ne renseigner les secrets que dans `.env` ou les variables du processus ;
-  les fichiers `.env.example` doivent rester vides de clés.
 
 Pour Docker, renseigner les mêmes variables dans `.env.production` puis lancer
 la commande Docker Compose documentée ci-dessous. Ne jamais placer la clé dans
@@ -275,8 +233,8 @@ scientifique avec chaque prédiction.
 | GET /api/ready | Modèle, empreinte, catalogue et périmètre prêts |
 | GET /api/antennas | Catalogue extrait de BOT.xlsx |
 | GET /api/model-info | Métriques, audit et traçabilité |
-| GET /api/extraction-models | Six modèles proposés, fournisseurs et choix par défaut |
-| POST /api/extract-inputs | Extraction des champs depuis un paragraphe (Gemini, Groq, Cloudflare ou Mistral) |
+| GET /api/extraction-models | Quatre modèles proposés, fournisseurs et choix par défaut |
+| POST /api/extract-inputs | Extraction des champs depuis un paragraphe (Gemini ou Groq) |
 | POST /api/predict | Prédiction ponctuelle |
 | POST /api/predict-sweep | Courbe, minimum et bandes sous le seuil |
 

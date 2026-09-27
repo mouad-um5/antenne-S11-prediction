@@ -2,7 +2,6 @@
 import json
 import logging
 import os
-import re
 import socket
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -25,22 +24,6 @@ EXTRACTION_MODELS = (
         "description": "Extraction JSON structurée avec GPT-OSS 20B, hébergé chez Groq.",
         "provider": "groq",
         "provider_label": "Groq",
-    },
-    {
-        "id": "@cf/meta/llama-3.1-8b-instruct-fast",
-        "label": "Cloudflare · Llama 3.1 8B Fast",
-        "description": "Extraction avec Llama 3.1 8B, hébergé sur Workers AI.",
-        "provider": "cloudflare",
-        "provider_label": "Cloudflare",
-        "quota_note": "Offre gratuite Workers AI soumise au quota quotidien du compte.",
-    },
-    {
-        "id": "mistral-small-latest",
-        "label": "Mistral · Mistral Small",
-        "description": "Extraction JSON structurée avec l'API Mistral.",
-        "provider": "mistral",
-        "provider_label": "Mistral AI",
-        "quota_note": "Utilisez un compte Mistral avec l'offre gratuite activée ; les quotas dépendent du compte.",
     },
 )
 MODEL_IDS = frozenset(model["id"] for model in EXTRACTION_MODELS)
@@ -257,156 +240,6 @@ def call_groq(paragraph: str, families: list[dict], model: str) -> dict:
         raise HTTPException(502, "Groq n'a pas renvoyé de paramètres exploitables. Reformulez le paragraphe.") from None
 
 
-
-def post_provider_json(url: str, key: str, body: dict, provider: str) -> dict:
-    """Send one request; never expose provider bodies or retry with another key."""
-    request = Request(
-        url,
-        data=json.dumps(body).encode("utf-8"),
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {key}",
-            "User-Agent": "AntennaPrediction/1.0",
-        },
-        method="POST",
-    )
-    try:
-        with urlopen(request, timeout=45) as response:
-            payload = json.loads(response.read(128_000))
-        if not isinstance(payload, dict):
-            raise ValueError("Expected response object")
-        return payload
-    except HTTPError as exc:
-        LOGGER.warning("extraction_upstream_failed provider=%s upstream_status=%s", provider, exc.code)
-        if exc.code == 429:
-            detail = f"{provider} : limite de requêtes ou de tokens atteinte (HTTP 429)."
-            retry_after = (exc.headers.get("Retry-After", "") if exc.headers else "").strip()
-            headers = None
-            if re.fullmatch(r"[0-9]{1,8}", retry_after):
-                detail += f" Réessayez dans {int(retry_after)} secondes."
-                headers = {"Retry-After": retry_after}
-            else:
-                detail += " Le fournisseur ne précise pas de délai de reprise. Vérifiez les limites et l'utilisation dans sa console avant de réessayer."
-            detail += " Vous pouvez aussi choisir un autre modèle."
-            raise HTTPException(429, detail, headers=headers) from None
-        if exc.code == 401:
-            if provider == "Cloudflare":
-                detail = "Cloudflare refuse l'authentification (HTTP 401). Vérifiez CLOUDFLARE_API_TOKEN et CLOUDFLARE_ACCOUNT_ID dans backend/.env. Créez un jeton depuis Workers AI > Use REST API pour le même compte, puis redémarrez le serveur."
-            else:
-                detail = "Mistral refuse l'authentification (HTTP 401). Vérifiez MISTRAL_API_KEY dans backend/.env, puis redémarrez le serveur."
-            raise HTTPException(503, detail) from None
-        if exc.code == 403:
-            detail = f"{provider} refuse l'accès (HTTP 403). Vérifiez les permissions du jeton et l'accès au modèle dans la console du fournisseur."
-            if provider == "Cloudflare":
-                detail += " Le jeton doit autoriser Workers AI Read et Edit sur le compte indiqué par CLOUDFLARE_ACCOUNT_ID."
-            raise HTTPException(503, detail) from None
-        if exc.code == 404:
-            raise HTTPException(503, f"{provider} : modèle ou ressource introuvable (HTTP 404). Vérifiez les accès au modèle et la configuration du compte.") from None
-        raise HTTPException(502, f"{provider} n'a pas pu traiter la demande. Réessayez ou choisissez un autre modèle.") from None
-    except (TimeoutError, socket.timeout):
-        raise HTTPException(504, f"{provider} met trop de temps à répondre. Réessayez ou utilisez le formulaire.") from None
-    except URLError:
-        raise HTTPException(502, f"Impossible de joindre {provider}. Le formulaire reste disponible.") from None
-    except (ValueError, UnicodeError):
-        raise HTTPException(502, f"Réponse {provider} illisible. Réessayez ou utilisez le formulaire.") from None
-
-
-def parse_provider_fields(content: str | dict) -> dict:
-    # Cloudflare's plain-text model may wrap the JSON in a single Markdown fence.
-    if isinstance(content, str):
-        content = content.strip()
-        fenced = re.fullmatch(r"\x60\x60\x60(?:json)?\s*([\s\S]*?)\s*\x60\x60\x60", content)
-        if fenced:
-            content = fenced.group(1)
-        content = json.loads(content)
-    if not isinstance(content, dict) or set(content) - set(LABELS):
-        raise ValueError("Unexpected fields")
-    return content
-
-
-def call_cloudflare(paragraph: str, families: list[dict], model: str) -> dict:
-    if MODEL_PROVIDERS.get(model) != "cloudflare":
-        raise HTTPException(422, "Ce modèle ne peut pas être envoyé à Cloudflare.")
-    key = os.getenv("CLOUDFLARE_API_TOKEN", "").strip()
-    account = os.getenv("CLOUDFLARE_ACCOUNT_ID", "").strip()
-    if not key or not account:
-        raise HTTPException(503, "Cloudflare nécessite CLOUDFLARE_API_TOKEN et CLOUDFLARE_ACCOUNT_ID dans backend/.env. Renseignez-les puis redémarrez le serveur.")
-    if not re.fullmatch(r"[0-9a-fA-F]{32}", account):
-        raise HTTPException(503, "CLOUDFLARE_ACCOUNT_ID doit être l'identifiant de compte Cloudflare à 32 caractères hexadécimaux.")
-    # Fast's documented input schema does not expose response_format.
-    # Request JSON in the prompt and validate every returned field locally.
-    instructions = (
-        extraction_instructions(families)
-        + " Réponds uniquement avec un objet JSON respectant ce schéma, sans commentaire : "
-        + json.dumps(extraction_schema(), ensure_ascii=False)
-    )
-    payload = post_provider_json(
-        f"https://api.cloudflare.com/client/v4/accounts/{account}/ai/run/{model}",
-        key,
-        {
-            "messages": [
-                {"role": "system", "content": instructions},
-                {"role": "user", "content": paragraph},
-            ],
-            "max_tokens": 2048,
-            "temperature": 0,
-            "stream": False,
-        },
-        "Cloudflare",
-    )
-    try:
-        if payload.get("success") is not True or payload.get("errors"):
-            raise ValueError("Provider failure")
-        result = payload["result"]
-        if result.get("tool_calls") or result.get("finish_reason", "stop") != "stop":
-            raise ValueError("Incomplete response")
-        return parse_provider_fields(result["response"])
-    except (KeyError, IndexError, TypeError, ValueError, AttributeError):
-        raise HTTPException(502, "Cloudflare n'a pas renvoyé de paramètres exploitables. Reformulez le paragraphe ou choisissez un autre modèle.") from None
-
-
-def call_mistral(paragraph: str, families: list[dict], model: str) -> dict:
-    if MODEL_PROVIDERS.get(model) != "mistral":
-        raise HTTPException(422, "Ce modèle ne peut pas être envoyé à Mistral.")
-    key = os.getenv("MISTRAL_API_KEY", "").strip()
-    if not key:
-        raise HTTPException(503, "Mistral nécessite une clé MISTRAL_API_KEY dans backend/.env. Renseignez-la puis redémarrez le serveur.")
-    payload = post_provider_json(
-        "https://api.mistral.ai/v1/chat/completions",
-        key,
-        {
-            "model": model,
-            "messages": [
-                {"role": "system", "content": extraction_instructions(families)},
-                {"role": "user", "content": paragraph},
-            ],
-            "response_format": {
-                "type": "json_schema",
-                "json_schema": {
-                    "name": "antenna_inputs",
-                    "strict": True,
-                    "schema": extraction_schema(),
-                },
-            },
-            "max_tokens": 2048,
-            "temperature": 0,
-            "stream": False,
-        },
-        "Mistral",
-    )
-    try:
-        choice = payload["choices"][0]
-        message = choice["message"]
-        if choice.get("finish_reason") != "stop" or message.get("refusal") or message.get("tool_calls"):
-            raise ValueError("Incomplete response or refusal")
-        content = message["content"]
-        if isinstance(content, list):
-            content = "".join(part["text"] for part in content if part["type"] == "text")
-        return parse_provider_fields(content)
-    except (KeyError, IndexError, TypeError, ValueError, AttributeError):
-        raise HTTPException(502, "Mistral n'a pas renvoyé de paramètres exploitables. Reformulez le paragraphe.") from None
-
-
 def validate_extraction(raw: dict, families: list[dict]) -> ExtractionResponse:
     warnings = []
     values = {}
@@ -457,8 +290,6 @@ def extract_inputs(payload: ExtractionInput):
     provider_call = {
         "gemini": call_gemini,
         "groq": call_groq,
-        "cloudflare": call_cloudflare,
-        "mistral": call_mistral,
     }[MODEL_PROVIDERS[model]]
     try:
         result = validate_extraction(provider_call(payload.paragraph, families, model), families)

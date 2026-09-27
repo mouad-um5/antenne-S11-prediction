@@ -25,7 +25,7 @@ export default function ParagraphInput({
           {models.map((model) => <option key={model.id} value={model.id}>{model.label}</option>)}
         </select>
         <span className="field__hint" id="extraction-model-help">
-          {selected?.description} {selected?.quota_note || ("Offre gratuite soumise aux quotas de votre compte " + (selected?.provider_label || "fournisseur") + ".")}
+          {selected?.description} Offre gratuite soumise aux quotas de votre compte {selected?.provider_label || "fournisseur"}.
         </span>
       </label>
       {modelsError && <div className="error" role="alert">{modelsError} Rechargez la page pour réessayer.</div>}
