@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { getAntennaCatalog, getModelInfo, predictPoint, predictSweep } from "./api/client";
+import { extractInputs, getAntennaCatalog, getModelInfo, predictPoint, predictSweep } from "./api/client";
 import NumberField from "./components/NumberField";
+import ParagraphInput from "./components/ParagraphInput";
 import S11Chart from "./components/S11Chart";
 
 const INITIAL_VALUES = {
@@ -14,6 +15,20 @@ const INITIAL_VALUES = {
   end_frequency: "4",
   points: "301",
   threshold_db: "-10",
+};
+
+const FIELD_LABELS = {
+  antenna_family_id: "grande famille",
+  antenna_variant: "antenne / variante",
+  gap: "gap",
+  surface_width: "largeur du substrat",
+  surface_length: "longueur du substrat",
+  epsilon_r: "permittivité relative",
+  frequency: "fréquence",
+  start_frequency: "fréquence de début",
+  end_frequency: "fréquence de fin",
+  points: "nombre de points",
+  threshold_db: "seuil",
 };
 
 const WORKFLOW_STEPS = [
@@ -57,6 +72,9 @@ function findRangeWarnings(ranges, candidates) {
 
 export default function App() {
   const [values, setValues] = useState(INITIAL_VALUES);
+  const [inputMode, setInputMode] = useState("form");
+  const [paragraph, setParagraph] = useState("");
+  const [extraction, setExtraction] = useState(null);
   const [selection, setSelection] = useState({ familyId: "", antenna: "" });
   const [activeStep, setActiveStep] = useState(1);
   const [modelInfo, setModelInfo] = useState(null);
@@ -115,6 +133,46 @@ export default function App() {
   );
 
   const highestStep = !hasAntenna ? 1 : pointResult ? 4 : 2;
+
+  const missingExtractedFields = extraction
+    ? Object.keys(FIELD_LABELS).filter((name) => {
+        if (name === "antenna_family_id") return !selection.familyId;
+        if (name === "antenna_variant") return !selection.antenna;
+        return values[name] === "";
+      })
+    : [];
+
+  function changeInputMode(mode) {
+    setInputMode(mode);
+    setError("");
+  }
+
+  async function handleExtraction(event) {
+    event.preventDefault();
+    setError("");
+    setLoading("extract");
+    try {
+      const result = await extractInputs(paragraph.trim());
+      const fields = result.fields;
+      setValues(Object.fromEntries(
+        Object.keys(INITIAL_VALUES).map((name) => [
+          name, fields[name] == null ? "" : String(fields[name]),
+        ]),
+      ));
+      setSelection({
+        familyId: fields.antenna_family_id || "",
+        antenna: fields.antenna_variant || "",
+      });
+      resetPredictions();
+      setExtraction(result);
+      setInputMode("form");
+      setActiveStep(fields.antenna_family_id && fields.antenna_variant ? 2 : 1);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setLoading("");
+    }
+  }
 
   function resetPredictions() {
     setPointResult(null);
@@ -175,7 +233,8 @@ export default function App() {
     }
   }
 
-  async function handleSweep() {
+  async function handleSweep(event) {
+    event.preventDefault();
     setError("");
     setLoading("sweep");
     try {
@@ -232,13 +291,43 @@ export default function App() {
         </div>
       </header>
 
-      <WorkflowStepper
+      <div className="input-mode shell" role="group" aria-label="Mode de saisie">
+        <button type="button" aria-pressed={inputMode === "form"} disabled={Boolean(loading)} onClick={() => changeInputMode("form")}>
+          Remplir le formulaire
+        </button>
+        <button type="button" aria-pressed={inputMode === "paragraph"} disabled={Boolean(loading)} onClick={() => changeInputMode("paragraph")}>
+          Décrire avec un paragraphe
+        </button>
+      </div>
+
+      {inputMode === "form" && <WorkflowStepper
         currentStep={activeStep}
         highestStep={highestStep}
         onStepChange={navigateToStep}
-      />
+      />}
 
       <div className="workflow-content shell">
+        {inputMode === "paragraph" ? (
+          <ParagraphInput
+            paragraph={paragraph}
+            onChange={(text) => { setParagraph(text); setError(""); }}
+            onSubmit={handleExtraction}
+            loading={loading === "extract"}
+            error={error}
+          />
+        ) : <>
+        {extraction && (
+          <div className="extraction-review" role="status">
+            <Notice kind="info" title="Paramètres extraits — vérifiez les valeurs">
+              {missingExtractedFields.length
+                ? `À compléter dans les étapes Antenne, Paramètres ou Courbe S11 : ${missingExtractedFields.map((name) => FIELD_LABELS[name]).join(", ")}.`
+                : "Tous les champs sont renseignés. Vous pouvez les corriger avant de lancer les calculs."}
+            </Notice>
+            {extraction.warnings.length > 0 && (
+              <Notice kind="warning" title="Points à vérifier">{extraction.warnings.join(" ")}</Notice>
+            )}
+          </div>
+        )}
         {activeStep === 1 && (
           <form className="panel workflow-panel antenna-panel" onSubmit={handleSelectionSubmit}>
             <PanelHeading
@@ -435,15 +524,15 @@ export default function App() {
               )}
             </div>
 
-            <div className="sweep__controls">
+            <form className="sweep__controls" onSubmit={handleSweep}>
               <NumberField label="Début (GHz)" name="start_frequency" value={values.start_frequency} onChange={handleChange} step="any" min="0.000001" required />
               <NumberField label="Fin (GHz)" name="end_frequency" value={values.end_frequency} onChange={handleChange} step="any" min="0.000001" required />
               <NumberField label="Points" name="points" value={values.points} onChange={handleChange} step="1" min="10" max="2001" required />
               <NumberField label="Seuil (dB)" name="threshold_db" value={values.threshold_db} onChange={handleChange} step="any" min="-100" max="0" required />
-              <button className="secondary-button" type="button" onClick={handleSweep} disabled={Boolean(loading)}>
+              <button className="secondary-button" type="submit" disabled={Boolean(loading)}>
                 {loading === "sweep" ? "Génération..." : "Générer la courbe"}
               </button>
-            </div>
+            </form>
 
             {(sweepWarnings.length > 0 || sweepResult?.warnings?.length > 0) && (
               <Notice kind="warning" title="Avertissement de validité">
@@ -481,6 +570,7 @@ export default function App() {
             </div>
           </section>
         )}
+        </>}
       </div>
 
       <footer className="shell">

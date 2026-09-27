@@ -1,6 +1,12 @@
 from dataclasses import dataclass
 from functools import lru_cache
 import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+
+ENV_FILE = Path(__file__).resolve().parents[1] / ".env"
 
 
 def _split_csv(value: str) -> tuple[str, ...]:
@@ -29,6 +35,9 @@ class Settings:
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
+    # Resolve from the backend directory, regardless of the launch directory.
+    # Explicit environment variables (including Docker) keep precedence.
+    load_dotenv(ENV_FILE, override=False, encoding="utf-8-sig")
     environment = os.getenv("APP_ENV", "development").strip().lower()
     if environment not in {"development", "test", "production"}:
         raise ValueError("APP_ENV doit valoir development, test ou production")

@@ -22,6 +22,7 @@ from app.predictor import (
     validate_model_artifacts,
 )
 from app.settings import get_settings
+from app.extraction import router as extraction_router
 
 
 LOGGER = logging.getLogger("antenna_api")
@@ -52,6 +53,7 @@ app = FastAPI(
     openapi_url="/openapi.json" if SETTINGS.enable_docs else None,
     lifespan=lifespan,
 )
+app.include_router(extraction_router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=list(SETTINGS.cors_origins),

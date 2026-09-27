@@ -22,6 +22,7 @@ identifiée, la production bloque les prédictions par défaut.
 ## Fonctionnalités
 
 - catalogue dynamique de 16 familles et 39 variantes lu depuis BOT.xlsx ;
+- choix entre formulaire et paragraphe avec extraction Gemini et relecture ;
 - sélection obligatoire de l'antenne ;
 - prédiction S11 ponctuelle ;
 - sweep fréquentiel vectorisé ;
@@ -84,6 +85,46 @@ npm run dev
 ~~~
 
 Frontend : http://localhost:5173
+
+## Saisie par paragraphe avec Gemini
+
+Le bouton **Décrire avec un paragraphe** envoie le texte à Gemini côté serveur,
+puis préremplit les champs pour relecture. Les valeurs absentes ou invalides restent
+vides, y compris les réglages du balayage. L'utilisateur complète les champs et
+déclenche lui-même la prédiction S11. Gemini extrait les paramètres ; XGBoost
+continue à effectuer les prédictions.
+
+1. Créer une clé dans [Google AI Studio](https://aistudio.google.com/apikey).
+2. Choisir un projet bénéficiant de l'offre gratuite. La gratuité et les quotas
+   dépendent du projet Google ; l'application ne contrôle pas sa facturation.
+3. Dans le dossier backend, copier `.env.example` vers `.env` et renseigner
+   `GEMINI_API_KEY`. Le modèle par défaut est `gemini-3.6-flash`.
+4. Démarrer avec `uvicorn app.main:app --reload --port 8001`. Le backend charge
+   automatiquement son fichier `.env`, sans remplacer les variables déjà définies
+   dans le processus. Redémarrer le serveur après toute modification de `.env`.
+
+Pour Docker, renseigner les mêmes variables dans `.env.production` puis lancer
+la commande Docker Compose documentée ci-dessous. Ne jamais placer la clé dans
+une variable `VITE_*`, dans le frontend ou dans Git.
+
+Sans clé, le formulaire reste utilisable et l'extraction affiche un message de
+configuration. Les quotas dépassés, délais et réponses invalides sont signalés
+sans lancer de prédiction ni réessayer automatiquement.
+
+Exemple de texte :
+
+> Je souhaite étudier un dipôle demi-onde de la famille des antennes filaires,
+> avec un gap de 39,47, une largeur de substrat de 75, une longueur de 75,
+> une permittivité relative de 5 et une fréquence de 2,4 GHz. Je veux une courbe
+> de 0,5 à 4 GHz sur 301 points avec un seuil de -10 dB.
+
+Les fréquences explicitement unitaires sont demandées en GHz au modèle. Les
+dimensions sont conservées sans conversion car leurs unités ne sont pas encore
+documentées dans le dataset ; un message invite à les vérifier.
+
+Documentation : [modèle](https://ai.google.dev/gemini-api/docs/models/gemini-3.6-flash),
+[tarifs et offre gratuite](https://ai.google.dev/gemini-api/docs/pricing#gemini-3.6-flash),
+[sorties structurées](https://ai.google.dev/gemini-api/docs/generate-content/structured-output).
 
 ## Tests et contrôles
 
@@ -163,6 +204,7 @@ scientifique avec chaque prédiction.
 | GET /api/ready | Modèle, empreinte, catalogue et périmètre prêts |
 | GET /api/antennas | Catalogue extrait de BOT.xlsx |
 | GET /api/model-info | Métriques, audit et traçabilité |
+| POST /api/extract-inputs | Extraction des champs depuis un paragraphe (Gemini) |
 | POST /api/predict | Prédiction ponctuelle |
 | POST /api/predict-sweep | Courbe, minimum et bandes sous le seuil |
 

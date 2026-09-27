@@ -3,9 +3,9 @@ import { ANTENNA_CATALOG_ENDPOINT } from "../data/antennaCatalog";
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 const REQUEST_TIMEOUT_MS = 15000;
 
-async function request(path, options = {}) {
+async function request(path, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
   const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
   const requestId = globalThis.crypto?.randomUUID?.()
     || `web-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   let response;
@@ -64,4 +64,11 @@ export function predictSweep(payload) {
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+
+export function extractInputs(paragraph) {
+  return request("/api/extract-inputs", {
+    method: "POST",
+    body: JSON.stringify({ paragraph }),
+  }, 60000);
 }

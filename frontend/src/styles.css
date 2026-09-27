@@ -92,3 +92,14 @@ footer { display: flex; justify-content: space-between; gap: 24px; padding: 30px
 
 @media (max-width: 850px) { .hero, .workspace { grid-template-columns: 1fr; } .hero { padding-top: 48px; } .model-status { width: fit-content; } .sweep__controls { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 560px) { .shell { width: min(100% - 24px, 1180px); } .hero { padding-top: 34px; } .field-grid, .antenna-fields, .sweep__controls, .quality-grid, .band-summary { grid-template-columns: 1fr; } .controls, .results, .sweep, .workflow-panel { padding: 21px; } .sweep__header, footer { flex-direction: column; } .reading strong { font-size: 3rem; } .chart-wrap, .chart-placeholder { height: 330px; } .workflow-stepper { padding-bottom: 12px; } .workflow-stepper li:not(:last-child)::after { top: 21px; left: calc(50% + 22px); width: calc(100% - 44px); } .workflow-stepper button { gap: 9px; padding: 0 3px; } .workflow-stepper button span { width: 44px; height: 44px; } .workflow-stepper button small { font-size: .62rem; } .selected-antenna { align-items: flex-start; } .selected-antenna strong { max-width: 210px; } .step-actions { flex-direction: column-reverse; } .step-actions .primary-button, .ghost-button { width: 100%; min-width: 0; } }
+
+.input-mode { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-bottom: 28px; }
+.input-mode button { padding: 14px 20px; border: 1px solid var(--line); border-radius: 12px; color: #c3ced8; background: var(--panel); }
+.input-mode button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); background: rgba(58, 224, 170, .08); }
+.input-mode button:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+.field textarea { width: 100%; min-height: 180px; resize: vertical; padding: 14px; border: 1px solid var(--line); border-radius: 10px; color: #eef7f4; background: rgba(4, 13, 20, .65); font: inherit; line-height: 1.65; }
+.field textarea:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+.field textarea::placeholder { color: #8394a7; }
+.paragraph-disclosure { color: var(--muted); font-size: .78rem; line-height: 1.6; }
+.extraction-review { width: min(860px, 100%); margin: 0 auto 24px; }
+.extraction-review .info { margin-top: 0; }
