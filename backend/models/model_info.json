@@ -1,0 +1,359 @@
+{
+  "schema_version": 2,
+  "model_id": "s11-xgb-9cce05386148",
+  "trained_at_utc": "2026-09-05T13:53:26.734835+00:00",
+  "features": [
+    "gap",
+    "surface_width",
+    "surface_length",
+    "epsilon_r",
+    "FREQUENCY"
+  ],
+  "geometry_features": [
+    "gap",
+    "surface_width",
+    "surface_length",
+    "epsilon_r"
+  ],
+  "target": "s11",
+  "units": {
+    "gap": "à confirmer",
+    "surface_width": "à confirmer",
+    "surface_length": "à confirmer",
+    "epsilon_r": "sans unité",
+    "FREQUENCY": "GHz",
+    "s11": "dB"
+  },
+  "rows": 40040,
+  "effective_rows": 31031,
+  "metrics": {
+    "mae": 0.03806820254226051,
+    "rmse": 0.10075911148176771,
+    "r2": 0.9989566710753022,
+    "absolute_error_p90_db": 0.0940604548118098,
+    "absolute_error_p95_db": 0.2130463442529167,
+    "absolute_error_p99_db": 0.4817214188983585
+  },
+  "validation": {
+    "strategy": "5-fold GroupKFold by complete antenna geometry",
+    "external_validation": false,
+    "folds": [
+      {
+        "fold": 1,
+        "test_rows": 7007,
+        "test_geometries": 7,
+        "mae": 0.034859241653129626,
+        "rmse": 0.090837687968844,
+        "r2": 0.999150215302311
+      },
+      {
+        "fold": 2,
+        "test_rows": 6006,
+        "test_geometries": 6,
+        "mae": 0.03742036028734342,
+        "rmse": 0.09084345545438013,
+        "r2": 0.9991527240115915
+      },
+      {
+        "fold": 3,
+        "test_rows": 6006,
+        "test_geometries": 6,
+        "mae": 0.040910673561237954,
+        "rmse": 0.11124516128226668,
+        "r2": 0.9987293694986262
+      },
+      {
+        "fold": 4,
+        "test_rows": 6006,
+        "test_geometries": 6,
+        "mae": 0.04463005412496971,
+        "rmse": 0.12279992905142646,
+        "r2": 0.9984502160185528
+      },
+      {
+        "fold": 5,
+        "test_rows": 6006,
+        "test_geometries": 6,
+        "mae": 0.03305550989947699,
+        "rmse": 0.08437703554078917,
+        "r2": 0.999268838447628
+      }
+    ],
+    "curve_metrics": {
+      "resonance_frequency_absolute_error_ghz": {
+        "mean": 0.006548387096774145,
+        "median": 0.007000000000000117,
+        "max": 0.01750000000000007
+      },
+      "minimum_s11_absolute_error_db": {
+        "mean": 0.08666880626135202,
+        "median": 0.0761563212385461,
+        "max": 0.2901708401423235
+      },
+      "curve_mae_db": {
+        "mean": 0.03806820254226052,
+        "median": 0.03220697902222413,
+        "max": 0.08486410593837636
+      }
+    }
+  },
+  "scientific_status": "internal_grouped_validation_only",
+  "antenna_scope": {
+    "family_id": null,
+    "family": null,
+    "variant": null,
+    "verified": false
+  },
+  "training_ranges": {
+    "gap": {
+      "min": 26.0,
+      "max": 49.0
+    },
+    "surface_width": {
+      "min": 40.0,
+      "max": 110.0
+    },
+    "surface_length": {
+      "min": 40.0,
+      "max": 110.0
+    },
+    "epsilon_r": {
+      "min": 1.0,
+      "max": 5.0
+    },
+    "FREQUENCY": {
+      "min": 0.5,
+      "max": 4.0
+    }
+  },
+  "geometry_domain": {
+    "distance_definition": "Euclidean distance after min-max normalization",
+    "warning_threshold": 0.21211525445522106,
+    "training_geometries": [
+      {
+        "gap": 26.0,
+        "surface_width": 75.0,
+        "surface_length": 75.0,
+        "epsilon_r": 4.25
+      },
+      {
+        "gap": 26.0,
+        "surface_width": 75.0,
+        "surface_length": 75.0,
+        "epsilon_r": 4.75
+      },
+      {
+        "gap": 29.0,
+        "surface_width": 40.0,
+        "surface_length": 40.0,
+        "epsilon_r": 4.25
+      },
+      {
+        "gap": 29.0,
+        "surface_width": 50.0,
+        "surface_length": 50.0,
+        "epsilon_r": 4.25
+      },
+      {
+        "gap": 29.0,
+        "surface_width": 60.0,
+        "surface_length": 60.0,
+        "epsilon_r": 4.25
+      },
+      {
+        "gap": 29.0,
+        "surface_width": 70.0,
+        "surface_length": 70.0,
+        "epsilon_r": 4.25
+      },
+      {
+        "gap": 29.0,
+        "surface_width": 75.0,
+        "surface_length": 75.0,
+        "epsilon_r": 4.25
+      },
+      {
+        "gap": 29.0,
+        "surface_width": 75.0,
+        "surface_length": 75.0,
+        "epsilon_r": 4.75
+      },
+      {
+        "gap": 29.0,
+        "surface_width": 80.0,
+        "surface_length": 80.0,
+        "epsilon_r": 4.25
+      },
+      {
+        "gap": 29.0,
+        "surface_width": 85.0,
+        "surface_length": 85.0,
+        "epsilon_r": 4.25
+      },
+      {
+        "gap": 29.0,
+        "surface_width": 90.0,
+        "surface_length": 90.0,
+        "epsilon_r": 4.25
+      },
+      {
+        "gap": 29.0,
+        "surface_width": 95.0,
+        "surface_length": 95.0,
+        "epsilon_r": 4.25
+      },
+      {
+        "gap": 29.0,
+        "surface_width": 100.0,
+        "surface_length": 100.0,
+        "epsilon_r": 4.25
+      },
+      {
+        "gap": 29.0,
+        "surface_width": 105.0,
+        "surface_length": 105.0,
+        "epsilon_r": 4.25
+      },
+      {
+        "gap": 29.0,
+        "surface_width": 110.0,
+        "surface_length": 110.0,
+        "epsilon_r": 4.25
+      },
+      {
+        "gap": 34.0,
+        "surface_width": 75.0,
+        "surface_length": 75.0,
+        "epsilon_r": 4.25
+      },
+      {
+        "gap": 34.0,
+        "surface_width": 75.0,
+        "surface_length": 75.0,
+        "epsilon_r": 4.75
+      },
+      {
+        "gap": 38.97,
+        "surface_width": 75.0,
+        "surface_length": 75.0,
+        "epsilon_r": 4.75
+      },
+      {
+        "gap": 39.0,
+        "surface_width": 75.0,
+        "surface_length": 75.0,
+        "epsilon_r": 4.25
+      },
+      {
+        "gap": 39.0,
+        "surface_width": 75.0,
+        "surface_length": 75.0,
+        "epsilon_r": 4.75
+      },
+      {
+        "gap": 39.47,
+        "surface_width": 75.0,
+        "surface_length": 75.0,
+        "epsilon_r": 1.0
+      },
+      {
+        "gap": 39.47,
+        "surface_width": 75.0,
+        "surface_length": 75.0,
+        "epsilon_r": 1.8888
+      },
+      {
+        "gap": 39.47,
+        "surface_width": 75.0,
+        "surface_length": 75.0,
+        "epsilon_r": 2.7777
+      },
+      {
+        "gap": 39.47,
+        "surface_width": 75.0,
+        "surface_length": 75.0,
+        "epsilon_r": 3.2222
+      },
+      {
+        "gap": 39.47,
+        "surface_width": 75.0,
+        "surface_length": 75.0,
+        "epsilon_r": 3.6666
+      },
+      {
+        "gap": 39.47,
+        "surface_width": 75.0,
+        "surface_length": 75.0,
+        "epsilon_r": 4.11111
+      },
+      {
+        "gap": 39.47,
+        "surface_width": 75.0,
+        "surface_length": 75.0,
+        "epsilon_r": 5.0
+      },
+      {
+        "gap": 44.0,
+        "surface_width": 75.0,
+        "surface_length": 75.0,
+        "epsilon_r": 4.25
+      },
+      {
+        "gap": 44.0,
+        "surface_width": 75.0,
+        "surface_length": 75.0,
+        "epsilon_r": 4.75
+      },
+      {
+        "gap": 49.0,
+        "surface_width": 75.0,
+        "surface_length": 75.0,
+        "epsilon_r": 4.25
+      },
+      {
+        "gap": 49.0,
+        "surface_width": 75.0,
+        "surface_length": 75.0,
+        "epsilon_r": 4.75
+      }
+    ]
+  },
+  "data_quality": {
+    "raw_rows": 40040,
+    "effective_rows_after_input_aggregation": 31031,
+    "removed_repeated_input_rows": 9009,
+    "fully_duplicated_rows": 6006,
+    "conflicting_input_keys": 2002,
+    "maximum_target_spread_db": 0.6888233871579992,
+    "geometry_count": 31,
+    "width_always_equals_length": true,
+    "aggregation_policy": "Les entrées identiques sont regroupées et leur cible S11 est moyennée."
+  },
+  "preprocessing": {
+    "input_duplicates": "grouped",
+    "conflicting_targets": "mean",
+    "scaling": "none (tree-based model)"
+  },
+  "model_parameters": {
+    "objective": "reg:squarederror",
+    "n_estimators": 400,
+    "learning_rate": 0.05,
+    "max_depth": 6,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "random_state": 42,
+    "n_jobs": -1
+  },
+  "library_versions": {
+    "python": "3.12.10",
+    "pandas": "2.3.3",
+    "numpy": "2.5.2",
+    "scikit_learn": "1.9.0",
+    "xgboost": "3.4.1",
+    "joblib": "1.6.0"
+  },
+  "artifacts": {
+    "dataset_sha256": "9cce05386148a1b9442a9bc99af0de1310924fffbaa0078cc4a50056e1e02187",
+    "model_sha256": "bbe09456904f36727cd0c67711807a87b7b6d1b1ab1805987fedf1541a509298"
+  }
+}

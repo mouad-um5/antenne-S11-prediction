@@ -1,0 +1,28 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    environment:
+      APP_ENV: production
+      ALLOWED_HOSTS: backend,localhost,127.0.0.1
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
+      ENABLE_API_DOCS: ${ENABLE_API_DOCS:-false}
+      REQUIRE_VERIFIED_MODEL_SCOPE: ${REQUIRE_VERIFIED_MODEL_SCOPE:-true}
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+
+  frontend:
+    build:
+      context: ./frontend
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
